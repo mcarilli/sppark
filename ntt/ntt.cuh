@@ -227,6 +227,12 @@ public:
             dev_ptr_t<fr_t> d_inout{domain_size, gpu};
             gpu.HtoD(&d_inout[0], inout, domain_size);
 
+            size_t flush_l2_size = (size_t)1 << 26;
+	    int *h_flush_l2 = new int[flush_l2_size];
+            dev_ptr_t<fr_t> d_flush_l2{flush_l2_size, gpu};
+            gpu.HtoD(&d_flush_l2[0], h_flush_l2, flush_l2_size);
+	    delete[] h_flush_l2;
+
             NTT_internal(&d_inout[0], lg_domain_size, order, direction, type, gpu);
 
             gpu.DtoH(inout, &d_inout[0], domain_size);
