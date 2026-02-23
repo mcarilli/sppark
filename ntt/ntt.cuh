@@ -223,17 +223,28 @@ public:
         try {
             gpu.select();
 
+            const int REPS = 8;
+
             size_t domain_size = (size_t)1 << lg_domain_size;
-            dev_ptr_t<fr_t> d_inout{domain_size, gpu};
-            gpu.HtoD(&d_inout[0], inout, domain_size);
 
-            size_t flush_l2_size = (size_t)1 << 26;
-	    int *h_flush_l2 = new int[flush_l2_size];
-            dev_ptr_t<fr_t> d_flush_l2{flush_l2_size, gpu};
-            gpu.HtoD(&d_flush_l2[0], h_flush_l2, flush_l2_size);
-	    delete[] h_flush_l2;
+	    int *h_inout = new int[REPS * domain_size];
+            int *inout_int = reinterpret_cast<int *>(inout);
+            for (int i{0}; i < REPS; i++)
+              for (int j{0}; j < domain_size; j++)
+                h_inout[i * domain_size + j] = inout_int[j];
 
-            NTT_internal(&d_inout[0], lg_domain_size, order, direction, type, gpu);
+            dev_ptr_t<fr_t> d_inout{REPS * domain_size, gpu};
+
+            gpu.HtoD(&d_inout[0], h_inout, REPS * domain_size);
+
+            // size_t flush_l2_size = (size_t)1 << 26;
+	    // int *h_flush_l2 = new int[flush_l2_size];
+            // dev_ptr_t<fr_t> d_flush_l2{flush_l2_size, gpu};
+            // gpu.HtoD(&d_flush_l2[0], h_flush_l2, flush_l2_size);
+	    // delete[] h_flush_l2;
+
+            for (int rep{0}; rep < REPS; rep++)
+              NTT_internal(&d_inout[rep * domain_size], lg_domain_size, order, direction, type, gpu);
 
             gpu.DtoH(inout, &d_inout[0], domain_size);
             gpu.sync();
